@@ -1,0 +1,19 @@
+echo "*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.pdb
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar
+*.log
+*.dat
+*.csv
+*.sqlite3
+*.sqlite
+*.db
+venv/
+env/
+virtualenv/" > .slugignore

@@ -39,4 +39,4 @@ history = model.fit(
     X_train, y_train, validation_data=(X_test, y_test), epochs=10, batch_size=32
 )
 
-model.save("digit_recognition_model.h5")
+model.save("digit_recognition_model.h5", include_optimizer=False, save_format="h5")
