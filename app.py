@@ -1,56 +1,43 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+from PIL import Image
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
-from PIL import Image
-import os
-import requests
+import io
 
 app = Flask(__name__)
+CORS(app)
+
+model = tf.keras.models.load_model("digit_recognition_model.h5")
 
 
-# Function to download model
-def download_model():
-    url = "https://your-storage-service.com/path/to/digit_recognition_model.h5"  # Replace with your model URL
-    response = requests.get(url)
-    with open("digit_recognition_model.h5", "wb") as f:
-        f.write(response.content)
-
-
-# Check if model exists, if not, download it
-if not os.path.exists("digit_recognition_model.h5"):
-    download_model()
-
-# Load the model
-model = load_model("digit_recognition_model.h5")
-
-
-@app.route("/")
-def home():
-    return "Digit Recognition Model"
+def preprocess_image(image):
+    image = image.resize((32, 32))
+    image = image.convert("L")
+    image = np.array(image)
+    image = image / 255.0
+    image = image.reshape(1, 32, 32, 1)
+    return image
 
 
 @app.route("/predict", methods=["POST"])
 def predict():
     if "file" not in request.files:
-        return jsonify({"error": "No file part"})
+        return jsonify({"error": "No file part"}), 400
     file = request.files["file"]
     if file.filename == "":
-        return jsonify({"error": "No selected file"})
-    if file:
-        try:
-            image = Image.open(file).convert("L")  # Convert to grayscale
-            image = image.resize((32, 32))  # Resize to 32x32
-            image = img_to_array(image)  # Convert to array
-            image = image.reshape(1, 32, 32, 1)  # Reshape to fit model input
-            image = image.astype("float32") / 255  # Normalize pixel values
-            prediction = model.predict(image)
-            result = np.argmax(prediction, axis=1)[0]
-            return jsonify({"prediction": int(result)})
-        except Exception as e:
-            return jsonify({"error": str(e)})
+        return jsonify({"error": "No selected file"}), 400
+
+    try:
+        image = Image.open(io.BytesIO(file.read()))
+        processed_image = preprocess_image(image)
+        predictions = model.predict(processed_image)
+        predicted_digit = np.argmax(predictions, axis=1)[0]
+        response = {"prediction": int(predicted_digit)}
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000)
